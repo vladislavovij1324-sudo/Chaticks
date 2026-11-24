@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Чатик</title>
+<script>
+/* грузим библиотеку Supabase, при блокировке пробуем запасные адреса */
+window.libReady=new Promise(function(done){
+  var u=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js","https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js","https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/umd/supabase.min.js"],i=0;
+  (function next(){
+    if(window.supabase&&window.supabase.createClient)return done(true);
+    if(i>=u.length)return done(false);
+    var t=document.createElement("script");t.src=u[i++];t.onload=next;t.onerror=next;
+    setTimeout(function(){if(!(window.supabase&&window.supabase.createClient)&&t.parentNode&&!t.done){}},0);
+    document.head.appendChild(t);
+  })();
+});
+</script>
+<style>
+:root{--bg:#f4f5f8;--card:#fff;--text:#1b1d24;--mute:#7b8091;--acc:#6c5ce7;--accT:#fff;--other:#fff;--line:#e4e6ee;--bad:#e5484d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#14151a;--card:#1e2028;--text:#eceef5;--mute:#8b90a3;--other:#23252e;--line:#2c2f3a}}
+*{box-sizing:border-box}html,body{margin:0;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}html{height:var(--h,100%)}body{height:100%}button,input{font-family:inherit}input[type=text],input[type=password]{-webkit-appearance:none;appearance:none}
+body{background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif}
+.screen{display:none;height:100%;flex-direction:column}.screen.on{display:flex}
+.center{align-items:center;padding:16px;overflow:auto}
+.card{background:var(--card);border-radius:22px;padding:22px;width:100%;max-width:400px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h1{margin:0 0 4px;font-size:26px}p.s{margin:0 0 12px;color:var(--mute);font-size:14px}
+.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1;padding:10px;border:0;border-radius:12px;background:var(--bg);color:var(--text);font-weight:600}
+.tabs .on{background:var(--acc);color:var(--accT)}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 5px}
+input[type=text],input[type=password]{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--bg);color:var(--text);font-size:16px;outline:none}
+input:focus{border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.em{font-size:24px;padding:5px 0;border:2px solid transparent;background:var(--bg);border-radius:12px}.em.sel{border-color:var(--acc)}
+.btn{width:100%;margin-top:16px;padding:13px;border:0;border-radius:14px;background:var(--acc);color:var(--accT);font-size:17px;font-weight:600}
+.btn:disabled{opacity:.4}.err{color:var(--bad);font-size:13px;margin-top:8px;min-height:18px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:14px;color:var(--mute)}
+a.l{color:var(--acc);text-decoration:underline;cursor:pointer}
+header{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+.ava{font-size:26px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:50%;flex:none}
+.hd{flex:1;min-width:0}.hd b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hd span{font-size:12px;color:var(--mute)}
+.ib{border:0;background:var(--bg);color:var(--text);padding:9px 12px;border-radius:12px;font-size:15px}
+#list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.add{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+.add input{flex:1}.add button{border:0;border-radius:12px;background:var(--acc);color:var(--accT);padding:0 14px;font-weight:600}
+.item{display:flex;align-items:center;gap:10px;background:var(--card);padding:10px;border-radius:16px}.item .hd{cursor:pointer}
+.sm{border:0;border-radius:10px;padding:7px 10px;font-weight:600;background:var(--acc);color:var(--accT)}.sm.no{background:var(--bg);color:var(--text)}
+#msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;align-items:flex-end;max-width:88%}.row.me{align-self:flex-end;flex-direction:row-reverse}
+.row .ava{width:32px;height:32px;font-size:19px}
+.bub{background:var(--other);padding:8px 12px;border-radius:16px 16px 16px 4px;word-break:break-word;white-space:pre-wrap;min-width:0}
+.me .bub{background:var(--acc);color:var(--accT);border-radius:16px 16px 4px 16px}
+.who{font-size:12px;font-weight:600;color:var(--acc);margin-bottom:2px}.me .who{display:none}
+.t{font-size:10px;opacity:.6;text-align:right;margin-top:2px}audio{height:36px;max-width:220px}
+.sys{align-self:center;color:var(--mute);font-size:13px;text-align:center;padding:16px}
+#rec{display:none;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}
+.fx{display:flex;gap:6px;overflow-x:auto;padding:6px 0}.fx button{flex:none;border:1.5px solid var(--line);background:var(--bg);color:var(--text);border-radius:14px;padding:7px 12px}
+.fx .on{border-color:var(--acc);background:var(--acc);color:var(--accT)}.bar{display:flex;gap:8px}.bar button{flex:1}
+form{display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}form input{flex:1;border-radius:22px}
+form button{width:44px;border:0;border-radius:50%;background:var(--acc);color:var(--accT);font-size:19px}
+form button.mic{background:var(--bg);color:var(--text)}form button.live{background:var(--bad);color:#fff}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+#modal.on{display:flex}#modal .card{max-height:85vh;overflow:auto;font-size:14px}#modal h3{margin:14px 0 4px;font-size:15px}#modal p{margin:0 0 6px}
+#call{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;z-index:10;text-align:center}
+#call.on{display:flex}#call .btn,#call input{max-width:320px}#call h2{margin:6px 0 0}
+#cCode{font-size:46px;font-weight:700;letter-spacing:8px;color:var(--acc)}#cIn{text-align:center;font-size:22px;letter-spacing:6px}
+</style>
+</head>
+<body>
+
+<div id="cfg" class="screen center on"><div class="card">
+ <h1>Подключение 🔌</h1><p class="s">Вставь данные из Supabase (Project URL и anon / publishable key). Это делается один раз.</p>
+ <label>Project URL</label><input type="text" id="cu" placeholder="https://xxxx.supabase.co" autocapitalize="off">
+ <label>Anon / publishable key</label><input type="text" id="ck" autocapitalize="off">
+ <div class="err" id="cErr2"></div><button class="btn" id="cSave">Сохранить</button>
+</div></div>
+
+<div id="auth" class="screen center"><div class="card">
+ <h1>Чатик 💬</h1><p class="s">Аккаунт с паролем, друзья по нику, голосовые и звонки</p>
+ <div class="tabs"><button id="tL" class="on">Вход</button><button id="tR">Регистрация</button></div>
+ <div id="rOnly"><label>Имя</label><input type="text" id="name" maxlength="20" autocomplete="off"><label>Аватарка</label><div class="grid" id="grid"></div></div>
+ <label>Ник (латиница, цифры, _)</label><input type="text" id="nick" maxlength="16" autocapitalize="off" autocomplete="username">
+ <label>Пароль (от 6 символов)</label><input type="password" id="pw" maxlength="64" autocomplete="current-password">
+ <div class="chk" id="rChk"><input type="checkbox" id="ok"><span>Мне есть 16 лет, я принимаю <a class="l" data-doc="terms">Условия</a> и <a class="l" data-doc="priv">Политику конфиденциальности</a></span></div>
+ <div class="err" id="err"></div><button class="btn" id="go">Войти</button>
+</div></div>
+
+<div id="home" class="screen">
+ <header><div class="ava" id="hAva"></div><div class="hd"><b id="hName"></b><span id="hNick"></span></div><button class="ib" id="share">🔗</button><button class="ib" id="menu">⋯</button></header>
+ <div class="add"><input type="text" id="inv" placeholder="Ник друга" autocapitalize="off" maxlength="16"><button id="invGo">Пригласить</button></div>
+ <div class="err" id="hErr" style="padding:0 14px"></div><div id="list"></div>
+</div>
+
+<div id="chat" class="screen">
+ <header><button class="ib" id="back">←</button><div class="ava" id="cAva"></div><div class="hd"><b id="cName"></b><span id="cNick"></span></div><button class="ib" id="callBtn">📞</button></header>
+ <div id="msgs"></div>
+ <div id="rec"><div class="sys" style="padding:0 0 4px" id="recInfo"></div><div class="fx" id="fx"></div>
+  <div class="bar"><button class="sm no" id="rPlay">▶ Прослушать</button><button class="sm no" id="rCancel">Отмена</button><button class="sm" id="rSend">Отправить</button></div></div>
+ <form id="f"><button type="button" class="mic" id="mic">🎤</button><input type="text" id="txt" maxlength="500" placeholder="Сообщение…" autocomplete="off"><button id="send">➤</button></form>
+</div>
+
+<div id="call"><div class="ava" id="cEm" style="width:90px;height:90px;font-size:50px">📞</div><h2 id="cTitle"></h2><p id="cSub" class="s"></p><div id="cCode"></div>
+ <input type="text" id="cIn" inputmode="numeric" maxlength="5" placeholder="Код из 5 цифр"><div class="err" id="cErr"></div>
+ <button class="btn" id="cAns">Ответить</button><button class="btn alt" id="cSound" style="display:none">🔊 Включить звук</button><button class="btn" id="cEnd" style="background:var(--bad);color:#fff">Завершить</button><audio id="remote" autoplay playsinline></audio></div>
+
+<div id="modal"><div class="card"><div id="mBody"></div><button class="btn" id="mClose">Закрыть</button></div></div>
+
+<script>
+/* Можно вписать ключи сюда, тогда экран подключения не покажется */
+const CFG_URL="",CFG_KEY="";
+
+const $=id=>document.getElementById(id);
+const EM=["😀","😎","🤓","😺","🐼","🦊","🐸","🐵","🦄","🐙","👻","🤖","👽","🔥","🌈","🍕","⚡","🚀","🎧","🌸","🍀","🐯","🦁","🐧"];
+const NICK=/^[a-z0-9_]{3,16}$/;
+let sb,cfg,me,mode="login",emoji=EM[0],cur=null,profs={},listCh=null,msgCh=null,callCh=null,myCallCh=null;
+const show=id=>document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id));
+const err=(m,id="err")=>$(id).textContent=m||"";
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+const mail=n=>"chatik."+n+"@gmail.com"; // служебный адрес, письма не отправляются
+const sha=async s=>btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)))));
+
+/* ---------- юридические тексты (шаблон) ---------- */
+const DOCS={
+terms:`<h2>Условия использования</h2><p>«Чатик» — любительский мессенджер. Оператор — человек, который его запустил и дал вам ссылку. Сервис предоставляется «как есть», без гарантий.</p>
+<h3>Правила</h3><p>Вам должно быть 16 лет или больше. Нельзя угрожать, травить, рассылать спам, незаконный контент и чужие личные данные, а также записывать и пересылать чужой голос без согласия. Вы отвечаете за то, что отправляете.</p>
+<h3>Приглашения</h3><p>Переписка начинается только после того, как приглашённый принял приглашение. Отклонённое приглашение блокирует повторные.</p>
+<h3>Голосовые эффекты</h3><p>Эффекты меняют звучание, но не делают вас анонимным. Нельзя выдавать себя за другого человека.</p>
+<h3>Удаление</h3><p>Оператор может удалить аккаунт при нарушении правил. Вы можете удалить аккаунт сами в меню «⋯».</p>`,
+priv:`<h2>Политика конфиденциальности</h2>
+<h3>Что хранится</h3><p>Ник, имя, аватарка, хеш пароля, текстовые и голосовые сообщения, список приглашений. Данные находятся на серверах Supabase (хостинг базы данных).</p>
+<h3>Важно знать</h3><p>Сообщения не имеют сквозного шифрования, технически их может видеть оператор проекта. Не отправляйте пароли и документы.</p>
+<h3>Микрофон</h3><p>Включается только после вашего нажатия и согласия. Голосовое отправляется, только если вы нажали «Отправить».</p>
+<h3>Звонки</h3><p>Звонок начинается после ввода 5-значного кода, который виден звонящему. Звук идёт напрямую между устройствами (WebRTC) и не записывается. Для соединения используется публичный STUN-сервер Google, которому видны IP-адреса участников.</p>
+<h3>Ваши права</h3><p>Вы можете удалить аккаунт и все данные в меню «⋯» в любой момент.</p><h3>Дети</h3><p>Сервис не для лиц младше 16 лет.</p>
+<p style="color:var(--mute)">Шаблон, не юридическая консультация. Перед публичным запуском проверьте с юристом и укажите контакт оператора.</p>`};
+const openDoc=k=>{$("mBody").innerHTML=DOCS[k];$("modal").classList.add("on")};
+document.querySelectorAll("[data-doc]").forEach(a=>a.onclick=()=>openDoc(a.dataset.doc));
+$("mClose").onclick=()=>$("modal").classList.remove("on");
+
+/* ---------- конфиг и старт ---------- */
+function loadCfg(){
+  let c=null;const h=location.hash;
+  if(h.startsWith("#c=")){try{c=JSON.parse(atob(h.slice(3)));ls("cfg",JSON.stringify(c));history.replaceState(null,"",location.pathname)}catch(e){}}
+  if(!c)try{c=JSON.parse(ls("cfg"))}catch(e){}
+  if(!c&&CFG_URL)c={u:CFG_URL,k:CFG_KEY};
+  return c&&c.u&&c.k?c:null;
+}
+$("cSave").onclick=()=>{const u=$("cu").value.trim().replace(/\/$/,""),k=$("ck").value.trim();
+  if(!/^https:\/\/.+\..+/.test(u)||k.length<20)return err("Проверь URL и ключ","cErr2");
+  ls("cfg",JSON.stringify({u,k}));boot()};
+async function boot(){
+  try{
+    cfg=loadCfg();if(!cfg)return show("cfg");
+    if(!await window.libReady){show("auth");return err("Не загрузилась библиотека Supabase. Обнови страницу или включи другой интернет / VPN.")}
+    sb=supabase.createClient(cfg.u,cfg.k);
+    const {data}=await sb.auth.getSession();
+    if(data.session&&await loadMe(data.session.user))return enter();
+    show("auth");
+  }catch(e){show("auth");err("Ошибка подключения: "+(e&&e.message||e))}
+}
+async function loadMe(u){const {data}=await sb.from("profiles").select("*").eq("id",u.id).maybeSingle();if(!data)return false;me=data;return true}
+
+EM.forEach(e=>{const b=document.createElement("button");b.type="button";b.className="em"+(e===emoji?" sel":"");b.textContent=e;
+ b.onclick=()=>{emoji=e;document.querySelectorAll(".em").forEach(x=>x.classList.toggle("sel",x===b))};$("grid").appendChild(b)});
+function setMode(m){mode=m;$("tL").classList.toggle("on",m==="login");$("tR").classList.toggle("on",m==="reg");
+ $("rOnly").style.display=$("rChk").style.display=m==="reg"?"":"none";$("go").textContent=m==="reg"?"Создать аккаунт":"Войти";err("")}
+$("tL").onclick=()=>setMode("login");$("tR").onclick=()=>setMode("reg");setMode("login");
+
+$("go").onclick=async()=>{
+  err("");if(!sb)return err("Нет подключения к базе. Проверь URL и ключ Supabase или обнови страницу.");const nick=$("nick").value.trim().toLowerCase().replace(/^@/,""),pw=$("pw").value;
+  if(!NICK.test(nick))return err("Ник: 3–16 символов, латиница, цифры, _");
+  if(pw.length<6)return err("Пароль минимум 6 символов");
+  $("go").disabled=true;
+  try{
+    if(mode==="reg"){
+      const name=$("name").value.trim();if(!name)throw "Введи имя";if(!$("ok").checked)throw "Нужно принять условия";
+      let {data,error}=await sb.auth.signUp({email:mail(nick),password:pw});
+      if(error&&/registered/i.test(error.message)){
+        const r=await sb.auth.signInWithPassword({email:mail(nick),password:pw});
+        if(r.error)throw "Этот ник занят";
+        if(await loadMe(r.data.user)){await sb.auth.signOut();throw "Этот аккаунт уже есть — нажми «Вход»"}
+        data=r.data;error=null;
+      }
+      if(error)throw "Ошибка регистрации: "+error.message;
+      if(!data.session)throw "В Supabase включено подтверждение email — выключи его (см. инструкцию)";
+      const {error:e2}=await sb.from("profiles").insert({id:data.user.id,nick,name,emoji});
+      if(e2){await sb.auth.signOut();throw e2.code==="23505"?"Этот ник занят":/schema cache|does not exist/i.test(e2.message)?"Таблицы не созданы: запусти supabase_setup.sql заново":"Не удалось создать профиль: "+e2.message}
+      await loadMe(data.user);
+    }else{
+      const {data,error}=await sb.auth.signInWithPassword({email:mail(nick),password:pw});
+      if(error)throw "Неверный ник или пароль";
+      if(!await loadMe(data.user))throw "Профиль не найден";
+    }
+    $("pw").value="";enter();
+  }catch(e){err(typeof e==="string"?e:"Ошибка: "+(e&&e.message||e))}
+  $("go").disabled=false;
+};
+
+/* ---------- главная ---------- */
+async function prof(id){
+  if(profs[id])return profs[id];
+  const {data}=await sb.from("profiles").select("*").eq("id",id).maybeSingle();
+  return profs[id]=data||{id,nick:"?",name:"Удалён",emoji:"🙂"};
+}
+function enter(){
+  profs[me.id]=me;$("hAva").textContent=me.emoji;$("hName").textContent=me.name;$("hNick").textContent="@"+me.nick;show("home");
+  loadList();
+  listCh&&sb.removeChannel(listCh);
+  listCh=sb.channel("chats-"+me.id).on("postgres_changes",{event:"*",schema:"public",table:"chats"},loadList).subscribe();
+  watchCalls();
+}
+async function loadList(){
+  const {data:cs,error}=await sb.from("chats").select("*").neq("status","declined").order("created_at");
+  if(error)return err("Ошибка базы: "+error.message,"hErr");
+  const box=$("list");box.textContent="";
+  if(!cs.length){const d=document.createElement("div");d.className="sys";d.textContent="Пока пусто. Введи ник друга и нажми «Пригласить».";box.appendChild(d)}
+  for(const c of cs){
+    const p=await prof(c.user_a===me.id?c.user_b:c.user_a);
+    const it=document.createElement("div");it.className="item";
+    const a=document.createElement("div");a.className="ava";a.textContent=p.emoji;
+    const h=document.createElement("div");h.className="hd";const b=document.createElement("b");b.textContent=p.name;
+    const sp=document.createElement("span");sp.textContent="@"+p.nick+(c.status==="pending"?(c.created_by===me.id?" · ждёт ответа":" · приглашает вас"):"");
+    h.append(b,sp);it.append(a,h);
+    if(c.status==="accepted")h.onclick=()=>openChat(c,p);
+    else if(c.created_by!==me.id){
+      const y=document.createElement("button");y.className="sm";y.textContent="Принять";y.onclick=async()=>{await sb.from("chats").update({status:"accepted"}).eq("id",c.id);loadList()};
+      const n=document.createElement("button");n.className="sm no";n.textContent="✕";n.onclick=async()=>{await sb.from("chats").update({status:"declined"}).eq("id",c.id);loadList()};
+      it.append(y,n);
+    }
+    box.appendChild(it);
+  }
+}
+$("invGo").onclick=async()=>{
+  err("","hErr");const n=$("inv").value.trim().toLowerCase().replace(/^@/,"");
+  if(!NICK.test(n))return err("Введи корректный ник","hErr");
+  if(n===me.nick)return err("Это твой ник 🙂","hErr");
+  const {data:p}=await sb.from("profiles").select("id").eq("nick",n).maybeSingle();
+  if(!p)return err("Такого ника нет. Пусть друг сначала зарегистрируется.","hErr");
+  const [a,b]=[me.id,p.id].sort();
+  const {error}=await sb.from("chats").insert({user_a:a,user_b:b,created_by:me.id});
+  if(error)return err(error.code==="23505"?"Приглашение уже есть или было отклонено":"Не получилось: "+error.message,"hErr");
+  $("inv").value="";loadList();
+};
+$("share").onclick=async()=>{
+  const url=location.href.split("#")[0]+"#c="+btoa(JSON.stringify(cfg));
+  try{if(navigator.share)return await navigator.share({title:"Чатик",text:"Регистрируйся, мой ник: @"+me.nick,url})}catch(e){}
+  try{await navigator.clipboard.writeText(url);err("Ссылка скопирована","hErr")}catch(e){prompt("Ссылка:",url)}
+};
+$("menu").onclick=()=>{const m=prompt("1 — Выйти\n2 — Условия\n3 — Конфиденциальность\n4 — Удалить аккаунт и данные");
+  if(m==="1")logout();else if(m==="2")openDoc("terms");else if(m==="3")openDoc("priv");else if(m==="4")delAcc()};
+async function logout(){await sb.auth.signOut();[listCh,msgCh,myCallCh].forEach(c=>c&&sb.removeChannel(c));listCh=msgCh=myCallCh=null;me=null;profs={};show("auth")}
+async function delAcc(){
+  if(!confirm("Удалить аккаунт, приглашения и переписки с вами? Это нельзя отменить."))return;
+  const {error}=await sb.rpc("delete_me");if(error)return err("Не удалось удалить: "+error.message,"hErr");
+  await logout();
+}
+
+/* ---------- чат ---------- */
+function openChat(c,p){
+  cur={id:c.id,other:p};$("cAva").textContent=p.emoji;$("cName").textContent=p.name;$("cNick").textContent="@"+p.nick;
+  $("msgs").textContent="";show("chat");
+  const seen=new Set();const add=m=>{if(seen.has(m.id))return;seen.add(m.id);addMsg(m)};
+  msgCh&&sb.removeChannel(msgCh);
+  msgCh=sb.channel("msgs-"+c.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:"chat_id=eq."+c.id},pl=>add(pl.new)).subscribe();
+  sb.from("messages").select("*").eq("chat_id",c.id).order("created_at",{ascending:false}).limit(100).then(({data})=>(data||[]).reverse().forEach(add));
+  cur.add=add;
+}
+$("back").onclick=()=>{msgCh&&sb.removeChannel(msgCh);msgCh=null;cancelRec();show("home")};
+function addMsg(m){
+  const mine=m.sender===me.id,p=mine?me:cur.other;
+  const row=document.createElement("div");row.className="row"+(mine?" me":"");
+  const a=document.createElement("div");a.className="ava";a.textContent=p.emoji;
+  const bub=document.createElement("div");bub.className="bub";
+  const w=document.createElement("div");w.className="who";w.textContent="@"+p.nick;bub.appendChild(w);
+  if(m.audio&&/^data:audio\//.test(m.audio)){const au=document.createElement("audio");au.controls=true;au.src=m.audio;bub.appendChild(au)}
+  else{const t=document.createElement("div");t.textContent=m.body||"";bub.appendChild(t)}
+  const t=document.createElement("div");t.className="t";t.textContent=new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  bub.appendChild(t);row.append(a,bub);const box=$("msgs");box.appendChild(row);box.scrollTop=box.scrollHeight;
+}
+async function sendMsg(d){const {data,error}=await sb.from("messages").insert({chat_id:cur.id,sender:me.id,...d}).select().single();if(error)throw error;cur.add(data)}
+$("f").onsubmit=async e=>{e.preventDefault();const body=$("txt").value.trim();if(!body)return;$("txt").value="";try{await sendMsg({body})}catch(x){$("txt").value=body}};
+
+/* ---------- голосовые + эффекты (запись в WAV — играет на iPhone и Android) ---------- */
+const FX={none:"Обычный",chip:"🐿 Белка",deep:"🐻 Бас",robot:"🤖 Робот",echo:"🏔 Эхо"};
+const AC=window.AudioContext||window.webkitAudioContext;
+let fxKey="none",mr=null,chunks=[],stream=null,buf=null,ctx=null,timer=null;
+Object.entries(FX).forEach(([k,v])=>{const b=document.createElement("button");b.type="button";b.textContent=v;b.className=k==="none"?"on":"";
+ b.onclick=()=>{fxKey=k;[...$("fx").children].forEach(x=>x.classList.toggle("on",x===b))};$("fx").appendChild(b)});
+async function getMic(){if(ls("micOk")!=="1"){if(!confirm("Включить микрофон? Запись отправится только после нажатия «Отправить» (или при звонке)."))throw 0;ls("micOk","1")}return navigator.mediaDevices.getUserMedia({audio:true})}
+function cancelRec(){clearTimeout(timer);if(mr&&mr.state!=="inactive"){mr.onstop=null;mr.stop()}stream&&stream.getTracks().forEach(t=>t.stop());mr=stream=buf=null;$("rec").style.display="none";$("mic").classList.remove("live");$("mic").textContent="🎤"}
+$("rCancel").onclick=cancelRec;
+$("mic").onclick=async()=>{
+  if(mr&&mr.state==="recording"){mr.stop();return}
+  if(!window.MediaRecorder||!AC)return alert("Браузер не поддерживает запись голоса. На iPhone нужен iOS 14.5 или новее.");
+  ctx=ctx||new AC();ctx.resume&&ctx.resume(); // сразу в момент нажатия — иначе iPhone заблокирует звук
+  try{stream=await getMic()}catch(e){if(e!==0)alert("Нет доступа к микрофону. Разреши его: Настройки → Safari → Микрофон.");return}
+  chunks=[];mr=new MediaRecorder(stream);mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  mr.onstop=async()=>{
+    clearTimeout(timer);stream.getTracks().forEach(t=>t.stop());$("mic").classList.remove("live");$("mic").textContent="🎤";
+    try{const ab=await new Blob(chunks).arrayBuffer();
+      buf=await new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);p&&p.then&&p.then(res,rej)});
+      $("recInfo").textContent="Запись "+buf.duration.toFixed(1)+" с — выбери эффект";$("rec").style.display="block"}catch(e){alert("Не удалось обработать запись")}
+  };
+  mr.start();$("mic").classList.add("live");$("mic").textContent="⏹";timer=setTimeout(()=>mr.state==="recording"&&mr.stop(),20000);
+};
+function graph(c,dest){ // строит цепочку эффектов в контексте c
+  const src=c.createBufferSource();src.buffer=buf;let out=src,rate=1,tail=.2;
+  if(fxKey==="chip")rate=1.5;if(fxKey==="deep")rate=.72;src.playbackRate.value=rate;
+  if(fxKey==="robot"){const g=c.createGain();g.gain.value=0;const o=c.createOscillator();o.type="square";o.frequency.value=55;const ow=c.createGain();ow.gain.value=.9;o.connect(ow);ow.connect(g.gain);src.connect(g);o.start();o.stop(c.currentTime+buf.duration/rate+.3);out=g}
+  if(fxKey==="echo"){const d=c.createDelay(1);d.delayTime.value=.28;const fb=c.createGain();fb.gain.value=.45;const mix=c.createGain();src.connect(mix);src.connect(d);d.connect(fb);fb.connect(d);d.connect(mix);out=mix;tail=1.6}
+  out.connect(dest);src.start();return {rate,tail};
+}
+function wav(f,sr){
+  const b=new ArrayBuffer(44+f.length*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+  w(0,"RIFF");v.setUint32(4,36+f.length*2,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,f.length*2,true);
+  for(let i=0;i<f.length;i++)v.setInt16(44+i*2,Math.max(-1,Math.min(1,f[i]))*32767,true);
+  return new Blob([b],{type:"audio/wav"});
+}
+$("rPlay").onclick=()=>{ctx.resume();graph(ctx,ctx.destination)};
+$("rSend").onclick=async()=>{
+  $("rSend").disabled=true;
+  try{
+    const [r0,tl]=({chip:[1.5,.2],deep:[.72,.2],echo:[1,1.6]})[fxKey]||[1,.2],sr=11025,OC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+    const oc=new OC(1,Math.ceil((buf.duration/r0+tl)*sr),sr);graph(oc,oc.destination);
+    const out=await new Promise((res,rej)=>{const p=oc.startRendering();oc.oncomplete=e=>res(e.renderedBuffer);p&&p.then&&p.then(res,rej)});
+    const blob=wav(out.getChannelData(0),sr);if(blob.size>700000)throw 0;
+    const url=await new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(blob)});
+    await sendMsg({audio:url});cancelRec();
+  }catch(e){alert("Не удалось отправить голосовое. Запиши покороче.")}
+  $("rSend").disabled=false;
+};
+
+/* ---------- звонки (WebRTC, сигналы через таблицу calls) ---------- */
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
+let pc=null,callId=null,callTick=null,ringTimer=null,localS=null,tries=0;
+function ui(title,sub,o={}){$("call").classList.add("on");$("cTitle").textContent=title;$("cSub").textContent=sub||"";$("cCode").textContent=o.code||"";
+ $("cIn").style.display=$("cAns").style.display=o.input?"":"none";$("cErr").textContent="";$("cEm").textContent=o.em||"📞"}
+function newPc(){const p=new RTCPeerConnection(ICE);p.ontrack=e=>{$("remote").srcObject=e.streams[0];$("remote").play().catch(()=>{$("cSound").style.display=""})};
+ p.onconnectionstatechange=()=>{if(p.connectionState==="failed")endCall("ended","Связь не установилась")};return p}
+function waitIce(){return new Promise(r=>{if(pc.iceGatheringState==="complete")return r();const t=setTimeout(r,4000);pc.onicegatheringstatechange=()=>{if(pc.iceGatheringState==="complete"){clearTimeout(t);r()}}})}
+function endCall(status,msg){
+  clearTimeout(ringTimer);clearInterval(callTick);
+  $("cSound").style.display="none";if(status&&callId)sb.from("calls").update({status}).eq("chat_id",callId).then(()=>{});
+  callCh&&sb.removeChannel(callCh);callCh=null;
+  pc&&pc.close();pc=null;localS&&localS.getTracks().forEach(t=>t.stop());localS=null;callId=null;
+  if(msg){ui(msg,"");$("cEnd").style.display="none";setTimeout(()=>{$("call").classList.remove("on");$("cEnd").style.display=""},1800)}else $("call").classList.remove("on");
+}
+function connected(who,em){clearTimeout(ringTimer);const t0=Date.now();ui("Разговор с @"+who,"00:00",{em});
+ callTick=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$("cSub").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")},1000)}
+$("cEnd").onclick=()=>endCall(pc&&pc.connectionState==="connected"||$("cCode").textContent?"ended":"declined");
+$("callBtn").onclick=async()=>{
+  if(pc||!cur)return;const id=cur.id,other=cur.other;
+  try{localS=await getMic()}catch(e){if(e!==0)alert("Нет доступа к микрофону.");return}
+  try{
+    callId=id;pc=newPc();localS.getTracks().forEach(t=>pc.addTrack(t,localS));
+    await pc.setLocalDescription(await pc.createOffer());await waitIce();
+    const code=String(10000+crypto.getRandomValues(new Uint32Array(1))[0]%90000);
+    ui("Звоним @"+other.nick+"…","Назови другу этот код — без него он не сможет ответить",{code});
+    const {error}=await sb.from("calls").upsert({chat_id:id,from_id:me.id,to_id:other.id,status:"ringing",code_hash:await sha(code+":"+id),offer:pc.localDescription.sdp,answer:null,ts:Date.now()});
+    if(error)throw error;
+    callCh=sb.channel("call-"+id).on("postgres_changes",{event:"UPDATE",schema:"public",table:"calls",filter:"chat_id=eq."+id},async pl=>{
+      const d=pl.new;if(!pc||callId!==id)return;
+      if(d.status==="answered"&&d.answer&&pc.signalingState==="have-local-offer"){await pc.setRemoteDescription({type:"answer",sdp:d.answer});connected(other.nick,other.emoji)}
+      else if(d.status==="declined")endCall(null,"Звонок отклонён");else if(d.status==="ended")endCall(null,"Звонок завершён");
+    }).subscribe();
+    ringTimer=setTimeout(()=>{if(pc&&pc.connectionState!=="connected")endCall("ended","Не ответили")},45000);
+  }catch(e){endCall("ended","Не удалось позвонить")}
+};
+async function incoming(d){
+  if(pc||callId)return;const id=d.chat_id;callId=id;tries=0;$("cIn").value="";
+  const p=await prof(d.from_id);ui("Звонок от @"+p.nick,"Введи код, который тебе назвал звонящий",{input:true,em:p.emoji});
+  $("cAns").onclick=async()=>{
+    if(await sha($("cIn").value.trim()+":"+id)!==d.code_hash){tries++;$("cErr").textContent="Неверный код ("+tries+"/3)";if(tries>=3)endCall("declined","Слишком много попыток");return}
+    try{localS=await getMic();pc=newPc();localS.getTracks().forEach(t=>pc.addTrack(t,localS));
+      await pc.setRemoteDescription({type:"offer",sdp:d.offer});await pc.setLocalDescription(await pc.createAnswer());await waitIce();
+      const {error}=await sb.from("calls").update({status:"answered",answer:pc.localDescription.sdp}).eq("chat_id",id);if(error)throw error;
+      connected(p.nick,p.emoji);
+    }catch(e){endCall("ended","Не удалось ответить")}
+  };
+}
+function watchCalls(){
+  myCallCh&&sb.removeChannel(myCallCh);
+  myCallCh=sb.channel("mycalls-"+me.id).on("postgres_changes",{event:"*",schema:"public",table:"calls",filter:"to_id=eq."+me.id},pl=>{
+    const d=pl.new;if(!d||!d.status)return;
+    if(d.status==="ringing"&&Date.now()-d.ts<45000)incoming(d);
+    else if(d.status==="ended"&&callId===d.chat_id)endCall(null,"Звонок завершён");
+  }).subscribe();
+}
+
+window.addEventListener("error",e=>{if(!me)err("Ошибка: "+e.message)});
+window.addEventListener("unhandledrejection",e=>{if(!me)err("Ошибка: "+(e.reason&&e.reason.message||e.reason))});
+$("cSound").onclick=()=>{$("remote").play().then(()=>$("cSound").style.display="none").catch(()=>{})};
+/* iPhone: подгоняем высоту под клавиатуру */
+const fit=()=>{document.documentElement.style.setProperty("--h",(window.visualViewport?visualViewport.height:innerHeight)+"px");window.scrollTo(0,0)};
+if(window.visualViewport){visualViewport.addEventListener("resize",fit);visualViewport.addEventListener("scroll",()=>window.scrollTo(0,0))}fit();
+boot();
+</script>
+</body>
+</html>
